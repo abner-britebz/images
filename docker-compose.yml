@@ -1,0 +1,17 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: csv_cont:latest   # ✅ keep tag for local builds
+    container_name: csv_cont
+    ports:
+      - "80:80"
+      # - "2222:22" 
+    volumes:
+      - ./:/var/www/html/
+    develop:
+      watch:
+        - path: .
+          action: rebuild
+    restart: unless-stopped

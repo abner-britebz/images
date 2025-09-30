@@ -1,0 +1,61 @@
+<!-- Created By: Abner Mencia -->
+<!-- Created: September 29, 2025 -->
+
+<!DOCTYPE html>
+<html lang="en" ng-app="app">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV</title>
+    <!-- <link rel="icon" type="image/x-icon" href="./shared/images/printer.svg"> -->
+
+    <!-- Bootstrap 3 -->
+    <link rel="stylesheet" href="shared/css/bootstrap.min.css">
+
+    <!-- AngularJS -->
+    <script src="lib/angular.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular-route.min.js"></script>
+
+    <!-- AngularJS App Scripts (order matters!) -->
+    <script src="lib/app.routes.js"></script>
+
+
+    <script src="services/csv.service.js"></script>
+
+
+
+
+    <script src="controllers/csv.controller.js"></script>
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-inverse navbar-static-top">
+        <div class="container-fluid">
+            <!-- Brand and toggle grouped for mobile -->
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbarNav">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="#!/">CSV</a>
+            </div>
+
+        </div>
+    </nav>
+
+    <!-- Main View -->
+    <div class="container">
+        <div ng-view></div>
+    </div>
+
+    <!-- Bootstrap JS (for navbar toggle) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="shared/js/bootstrap.min.js"></script>
+</body>
+
+</html>
