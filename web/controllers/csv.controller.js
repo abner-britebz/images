@@ -5,7 +5,7 @@ angular.module('app')
             imageColumn: '',
             itemColumn: '',
             excelFile: null,
-            rowStart: 2
+            rowStart: 0
         };
 
         $scope.uploading = false;
