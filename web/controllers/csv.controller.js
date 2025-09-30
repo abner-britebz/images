@@ -32,7 +32,7 @@ angular.module('app')
                         fileData: e.target.result.split(',')[1], // Base64 only
                         imageColumn: $scope.form.imageColumn || '',
                         itemColumn: $scope.form.itemColumn,
-                        rowStart: $scope.form.rowStart || 2
+                        rowStart: $scope.form.rowStart || null
                     };
 
                     // Call service

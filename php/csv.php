@@ -29,10 +29,10 @@ logMessage("Database connected");
 $data = json_decode(file_get_contents('php://input'), true);
 $imageColumn = $data['imageColumn'] ?? '';
 $itemColumn  = $data['itemColumn'] ?? '';
-$rowStart    = $data['rowStart'] ?? 2;
+$rowStart    = $data['rowStart'] ?? 1;
 $fileName    = $data['fileName'] ?? 'upload.xlsx';
 $fileData    = $data['fileData'] ?? '';
-
+logMessage("START ROW ::: $rowStart");
 $tmpFile = sys_get_temp_dir() . '/' . $fileName;
 file_put_contents($tmpFile, base64_decode($fileData));
 logMessage("Temp file saved: $tmpFile");
@@ -51,50 +51,75 @@ logMessage("Spreadsheet loaded, total drawings: " . count($worksheet->getDrawing
 // Map drawings by cell coordinate (support multiple images per cell)
 $drawingsMap = [];
 foreach ($worksheet->getDrawingCollection() as $drawing) {
-    $coord = $drawing->getCoordinates();
+    $coord = $drawing->getCoordinates(); // e.g., "C5"
     if (!isset($drawingsMap[$coord])) {
         $drawingsMap[$coord] = [];
     }
-    $drawingsMap[$coord][] = $drawing; // append
+    $drawingsMap[$coord][] = $drawing;
+}
 logMessage("Drawings mapped: " . count($drawingsMap));
 
+// ------------------------
 // Process rows
+// ------------------------
+
 for ($row = $rowStart; $row <= $worksheet->getHighestRow(); $row++) {
-    $cellRef = $imageColumn . $row;
-    if (!isset($drawingsMap[$cellRef])) {
-        logMessage("No drawing for $cellRef");
+    if (!empty($imageColumn)) {
+        // Use the given image column
+        $cellRef = $imageColumn . $row;
+        $targets = isset($drawingsMap[$cellRef]) ? [$cellRef => $drawingsMap[$cellRef]] : [];
+    } else {
+        // No image column given: process all drawings in this row (any column)
+        $targets = [];
+        foreach ($drawingsMap as $coord => $drawings) {
+            if (preg_match('/([A-Z]+)([0-9]+)/', $coord, $m)) {
+                $drawRow = (int)$m[2];
+                if ($drawRow === $row) {
+                    $targets[$coord] = $drawings;
+                }
+            }
+        }
+    }
+
+    if (empty($targets)) {
+        logMessage("No drawings for row $row");
         continue;
     }
 
-    foreach ($drawingsMap[$cellRef] as $index => $drawing) {
-        try {
-            // Get image contents
-            if ($drawing instanceof MemoryDrawing) {
-                ob_start();
-                call_user_func($drawing->getRenderingFunction(), $drawing->getImageResource());
-                $imageContents = ob_get_clean();
-                $extension = $drawing->getMimeType() === 'image/png' ? 'png' : 'jpg';
-            } else {
-                $imageContents = file_get_contents($drawing->getPath());
-                $extension = $drawing->getExtension();
+    foreach ($targets as $cellRef => $drawings) {
+        foreach ($drawings as $index => $drawing) {
+            try {
+                // Get image contents
+                if ($drawing instanceof MemoryDrawing) {
+                    ob_start();
+                    call_user_func(
+                        $drawing->getRenderingFunction(),
+                        $drawing->getImageResource()
+                    );
+                    $imageContents = ob_get_clean();
+                    $extension = $drawing->getMimeType() === 'image/png' ? 'png' : 'jpg';
+                } else {
+                    $imageContents = file_get_contents($drawing->getPath());
+                    $extension = $drawing->getExtension();
+                }
+
+                // Save image
+                $filename = $cellRef . '_' . $index . '.' . $extension;
+                $filePath = $imagesDir . '/' . $filename;
+                file_put_contents($filePath, $imageContents);
+                logMessage("Saved image for $cellRef -> $filePath");
+
+                // Insert into DB
+                $itemValue = $worksheet->getCell($itemColumn . $row)->getValue();
+                $stmt = $pdo->prepare("INSERT INTO image (itemnumber, path) VALUES (:itemnumber, :path)");
+                $stmt->execute([
+                    ':itemnumber' => $itemValue,
+                    ':path' => $filePath
+                ]);
+                logMessage("Inserted DB row for $cellRef ($itemValue)");
+            } catch (\Exception $e) {
+                logMessage("Error processing row $row drawing $index: " . $e->getMessage());
             }
-
-            // Save image (add index to filename to avoid overwriting)
-            $filename = $cellRef . '_' . $index . '.' . $extension;
-            $filePath = $imagesDir . '/' . $filename;
-            file_put_contents($filePath, $imageContents);
-            logMessage("Saved image for $cellRef -> $filePath");
-
-            // Insert into DB
-            $itemValue = $worksheet->getCell($itemColumn . $row)->getValue();
-            $stmt = $pdo->prepare("INSERT INTO image (itemnumber, path) VALUES (:itemnumber, :path)");
-            $stmt->execute([
-                ':itemnumber' => $itemValue,
-                ':path' => $filePath
-            ]);
-            logMessage("Inserted DB row for $cellRef ($itemValue)");
-        } catch (\Exception $e) {
-            logMessage("Error processing row $row drawing $index: " . $e->getMessage());
         }
     }
 }
